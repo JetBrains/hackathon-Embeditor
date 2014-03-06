@@ -1,40 +1,48 @@
-" load plugin if vim compiled with +python
-if !has('python')
-	echo "Error: Required vim compiled with +python"
-	finish
+" Prerequisites
+if &compatible || exists('g:loaded_intellij')
+  finish
+elseif v:version < 704
+  echohl WarningMsg 
+  echomsg 'IntelliJ unavailable: requires Vim 7.4+'
+  echohl None
+  finish
+elseif !has('python')
+  echohl WarningMsg 
+  echomsg 'IntelliJ unavailable: requires Vim with python 2.x support'
+  echohl None
+  finish
 endif
 
-" load plugin only once
-if exists("g:loaded_intellij") || &cp
-    finish
-endif
-let g:loaded_intellij = 1
+" Boilerplate
+let s:save_cpoptions = &cpoptions
+set cpoptions&vim
 
-command! -nargs=* Python :python <args>
+" Initialize python
+python import idea_vim
 
-" initialize idea_vim plugin
-Python << ENDPYTHON
-import vim
-import sys
-sys.path.insert(0, vim.eval('expand("<sfile>:p:h")'))
-import idea_vim
-ENDPYTHON
-
-" START COMPLETION
+" Completion 
 function! idea#complete(findstart, base)
-  Python idea_vim.complete()
+  return pyeval('
+               \idea_vim.complete(int(vim.eval("a:findstart")), 
+               \                  vim.eval("a:base"))
+               \')
 endfunction
 
-"" Autoactivate plugin functionality when within an IDEA project
+" Autoactivation
 
 function! idea#autoactivate()
    if !empty(finddir('.idea', './;~'))
        setlocal omnifunc=idea#complete
-       nmap <buffer> <C-]> :Python idea_vim.resolve()<CR>
+       nnoremap <buffer> <C-]> :python idea_vim.resolve()<CR>
    endif
 endfunction
 
 augroup intellijintegration
     autocmd!
-    autocmd BufNewFile,BufReadPost * nested call idea#autoactivate()
+    autocmd BufNewFile,BufReadPost * call idea#autoactivate()
 augroup end
+
+" Boilerplate
+let g:loaded_intellij = 1
+let &cpoptions = s:save_cpoptions
+unlet s:save_cpoptions

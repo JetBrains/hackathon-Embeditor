@@ -23,6 +23,7 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.*;
 import com.intellij.psi.impl.PsiFileFactoryImpl;
+import com.intellij.psi.presentation.java.SymbolPresentationUtil;
 import com.intellij.testFramework.LightVirtualFile;
 import com.intellij.util.ui.UIUtil;
 import org.jetbrains.annotations.NotNull;
@@ -32,6 +33,7 @@ import java.io.File;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * User: zolotov
@@ -65,17 +67,17 @@ public final class EmbeditorUtil {
   }
 
   @NotNull
-  public static Collection<ResolveOutcome> getResolveOutcomes(@NotNull final String path,
+  public static List<ResolveOutcome> getResolveOutcomes(@NotNull final String path,
                                                               @NotNull final String fileContent,
                                                               final int line,
                                                               final int column) {
-    final Ref<Collection<ResolveOutcome>> ref = Ref.create();
+    final Ref<List<ResolveOutcome>> ref = Ref.create();
     UIUtil.invokeAndWaitIfNeeded(new Runnable() {
       @Override
       public void run() {
         PsiElement[] elements = performResolve(path, fileContent, line, column);
         if (elements.length > 0) {
-          Collection<ResolveOutcome> result = new LinkedList<ResolveOutcome>();
+          List<ResolveOutcome> result = new LinkedList<ResolveOutcome>();
           for (PsiElement element : elements) {
             if (element != null) {
               PsiFile resolveToFile = element.getContainingFile();
@@ -87,8 +89,10 @@ public final class EmbeditorUtil {
                 assert doc != null;
                 int offset = element.getTextOffset();
                 int resolveToRow = doc.getLineNumber(offset);
-                int resolveToColumn = offset - doc.getLineStartOffset(resolveToRow);
-                result.add(new ResolveOutcome(resolveToPath, resolveToRow, resolveToColumn));
+                int lineStartOffset = doc.getLineStartOffset(resolveToRow);
+                int resolveToColumn = offset - lineStartOffset;
+                String resolveToText = SymbolPresentationUtil.getSymbolPresentableText(element);
+                result.add(new ResolveOutcome(resolveToPath, resolveToRow, resolveToColumn, resolveToText));
               }
             }
           }
